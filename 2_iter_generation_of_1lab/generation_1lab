@@ -201,7 +201,7 @@ def generate_code_from_graph(G, t1, t2, t4):
                 asm_code += f"    j node_{successors[1]}\n"
 
     # проверка на успех
-    asm_code += "final:\n    bne t4, t4, fail  # если t4 != t4 fail\n    j success  # если t4 == t4 success\n"
+    asm_code += "final:\n    bne t3, t4, fail  # если t3 != t4 fail\n    j success  # если t3 == t4 success\n"
 
     asm_code += "fail:\n    li a0, 1\n    la a1, error\n    li a2, 13\n    li a7, 64\n    ecall\n    j exit\n"
 
