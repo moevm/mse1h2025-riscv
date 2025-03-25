@@ -1,137 +1,160 @@
 import random
 import networkx as nx
 import matplotlib.pyplot as plt
-import math
-
-# -------------------------------------------------
-n = 7  # количество функций
-deep = 0.6  # глубина основного пути (0.3–0.9)
-# -------------------------------------------------
-
-a4_val = random.randint(5, 15) # в идеале эти значения должны рассчитываться на основе id студента но пока так
-a5_val = random.randint(2, 10)
-a6_val = random.randint(10, 30)
-
-step1 = a4_val + a5_val
-step2 = a6_val // a5_val
-final_flag = step1 + step2  # будет в a5
-
-# Генерация связного графа
-G = nx.DiGraph()
-vertices = list(range(n))
-G.add_nodes_from(vertices)
-
-min_path_len = max(3, int(n * deep))
-main_path = random.sample(vertices, min_path_len)
-for i in range(len(main_path) - 1):
-    G.add_edge(main_path[i], main_path[i + 1], color='black')
-print(main_path)
-used = set(main_path)
-free = [v for v in vertices if v not in used]
-print(free)
-for v in free:
-    u = random.choice(main_path[:-1])
-    G.add_edge(u, v, color='red')
-
-#поиск последней функции
-final_func = 0
-for v in range(1, len(main_path)):
-    if not G.adj[main_path[v-1]]:
-        continue
-    temp = max(G.adj[main_path[v-1]])
-    temp2 = main_path[v]
-    if max(G.adj[main_path[v-1]]) > main_path[v]:
-        final_func = max(final_func, max(G.adj[main_path[v-1]]))
-        break
 
 
+class GenerateLab2:
+    def __init__(self, n: int, deep: float, id: int):
+        self.n = n
+        self.deep = deep
+        self.id = id
 
-remaining_funcs = [v for v in vertices if v != final_func]
-op_funcs_sample = random.sample(remaining_funcs, 2)
+        self.n_of_jump = n // 5
+        self.n_of_func = n - self.n_of_jump
 
-ops_map = {
-    op_funcs_sample[0]: '\tadd a4, a4, a5',
-    op_funcs_sample[1]: '\tdiv a6, a6, a5',
-    final_func:         '\tadd a5, a4, a6'  # всегда в последней
-}
+        self.a4 = 0
+        self.a5 = 0
+        self.a6 = 0
+
+        self.flag = 0
+        self.G = nx.DiGraph()
+        self.main_path = []
+        self.final_func = 0
+        self.ops_map = {}
+
+        self.calculate_reg()
+        self.calculate_flag()
+        self.generate_graph()
+
+    def calculate_reg(self):
+        self.a4 = ((self.id % random.randint(3, 7)) + 5) * 10  # min/max = 50/110
+        self.a5 = (self.id // random.randint(10, 100) + random.randint(10, 20))  # id?
+        self.a6 = ((self.id // 100) % 10) + (random.randint(30, 50) - 4)
+
+    def calculate_flag(self):
+        step1 = self.a5 + self.a4
+        step2 = self.a5 // self.a6
+        self.flag = step1 * step2
+
+    def generate_graph(self):
+        vertices = list(range(self.n_of_func))
+        self.G.add_nodes_from(vertices)
+
+        min_path_len = max(3, int(self.n_of_func * self.deep))
+        self.main_path = random.sample(vertices, min_path_len)
+        for i in range(len(self.main_path) - 1):
+            self.G.add_edge(self.main_path[i], self.main_path[i + 1], color='black')
+
+        used = set(self.main_path)
+        free = [v for v in vertices if v not in used]
+        print(free)
+        for u in free:
+            v = random.choice(self.main_path[:-1])
+            self.G.add_edge(v, u, color='red')
+
+        for u in range(self.n_of_jump):
+            v = random.choice([i for i in range(self.n_of_func)])
+            self.G.add_edge(v, self.n_of_func + u, color='blue')
+
+        for v in range(1, len(self.main_path)):
+            if not self.G.adj[self.main_path[v - 1]]:
+                continue
+            if max(self.G.adj[self.main_path[v - 1]]) > self.main_path[v]:
+                self.final_func = max(self.final_func, max(self.G.adj[self.main_path[v - 1]]))
+                break
+
+        remaining_funcs = [v for v in vertices if v != self.final_func]
+        op_funcs_sample = random.sample(remaining_funcs, 2)
+
+        self.ops_map = {
+            op_funcs_sample[0]: '\tadd a4, a4, a5',
+            op_funcs_sample[1]: '\tdiv a6, a5, a6',
+            self.final_func: '\tmul a5, a4, a6'  # всегда в последней
+        }
+
+    def generate_noise(self):
+        regs = ['a1', 'a2', 'a3']
+        ops = ['add', 'sub', 'xor', 'or', 'and', 'mul']
+        lines = []
+        for _ in range(random.randint(1, 3)):
+            dst = random.choice(regs)
+            r1 = random.choice(regs)
+            r2 = random.choice(regs)
+            op = random.choice(ops)
+            lines.append(f'\t{op} {dst}, {r1}, {r2}')
+        return lines
 
 
-def gen_noise():
-    regs = ['a1', 'a2', 'a3']
-    ops = ['add', 'sub', 'xor', 'or', 'and', 'mul']
-    lines = []
-    for _ in range(random.randint(1, 3)):
-        dst = random.choice(regs)
-        r1 = random.choice(regs)
-        r2 = random.choice(regs)
-        op = random.choice(ops)
-        lines.append(f'\t{op} {dst}, {r1}, {r2}')
-    return lines
+    def generate_func(self, idx, neighbors):
+        lines = [f'func_{idx}:']
+        lines += self.generate_noise()
 
-def gen_func(idx, neighbors):
-    lines = [f'func_{idx}:']
-    lines += gen_noise()
+        if idx in self.ops_map:
+            lines.append(self.ops_map[idx])
+        for n in neighbors:
+            if neighbors[n]['color'] == 'blue':
+                lines += [
+                    f'\tj func_{n}'
+                ]
+            else:
+                lines += [
+                    '\taddi sp, sp, -4',
+                    '\tsw ra, 0(sp)',
+                    f'\tcall func_{n}',
+                    '\tlw ra, 0(sp)',
+                    '\taddi sp, sp, 4'
+                ]
+        lines.append('\tret\n')
+        return lines
 
-    if idx in ops_map:
-        lines.append(ops_map[idx])
-
-    for n in neighbors:
-        lines += [
-            '\taddi sp, sp, -4',
-            '\tsw ra, 0(sp)',
-            f'\tcall func_{n}',
-            '\tlw ra, 0(sp)',
-            '\taddi sp, sp, 4'
-        ]
-    lines.append('\tret\n')
-    return lines
-
-#a1, a2, a3 - будут рандомными
-#От самой начальной программы требуется только задать a1 - a6 регистры и вызвать начальуню функцию
-# это пока для тестов
-asm_code = f"""
+    def generate_asm(self):
+        asm_code = f"""
 .global _start
 
 _start:
-\tli a1, 5  
-\tli a2, 10 
-\tli a3, 15   
-\tli a4, {a4_val}
-\tli a5, {a5_val}
-\tli a6, {a6_val}
-\tcall func_{main_path[0]}
-\t# Флаг находится в a5
-\tli a0, 0        
-\tli a7, 93       
-\tecall   
+\tli a1, 5
+\tli a2, 10
+\tli a3, 15
+\tli a4, {self.a4}
+\tli a5, {self.a5}
+\tli a6, {self.a6}
+\tcall func_{self.main_path[0]}
+\tli a0, 0
+\tli a7, 93
+\tecall
 """
+        visited = set()
+        stack = [self.main_path[0]]
+        while stack:
+            v = stack.pop()
+            if v in visited:
+                continue
+            visited.add(v)
+            u = dict(sorted(self.G.adj[v].items()))
+            stack.extend(u)
+            asm_code += '\n'.join(self.generate_func(v, u)) + '\n'
 
-visited = set()
-stack = [main_path[0]]
-while stack:
-    v = stack.pop()
-    if v in visited:
-        continue
-    visited.add(v)
-    u = dict(sorted(G.adj[v].items()))
-    stack.extend(u)
-    asm_code += '\n'.join(gen_func(v, u)) + '\n'
-
-
-
-print(f"Флаг (в a5): {final_flag}")
-print(f"Начальные значения: a4 = {a4_val}, a5 = {a5_val}, a6 = {a6_val}")
-print(f"Инструкции распределены по функциям: {op_funcs_sample}")
-print("Ассемблер сохранён в: generated_program.s")
-
-with open("generated_program.s", "w") as f:
-    f.write(asm_code)
+        with open("generated_program.s", "w") as f:
+            f.write(asm_code)
 
 
-# plt.figure(figsize=(8, 6))
-# edge_colors = [G[u][v]['color'] for u, v in G.edges()]
-# nx.draw(G, with_labels=True, node_color="lightblue", edge_color=edge_colors)
-# plt.title("Граф вызовов функций")
-# plt.show()
+        #test
+        print(f"Флаг (в a5): {self.flag}")
+        print(f"Начальные значения: a4 = {self.a4}, a5 = {self.a5}, a6 = {self.a6}")
+        print(f"Инструкции распределены по функциям: {list(self.ops_map.keys())}")
+        print("Ассемблер сохранён в: generated_program.s")
 
+        # plt.figure(figsize=(8, 6))
+        # edge_colors = [self.G[u][v]['color'] for u, v in self.G.edges()]
+        # nx.draw(self.G, with_labels=True, node_color="lightblue", edge_color=edge_colors)
+        # plt.title("Граф вызовов функций")
+        # plt.show()
+
+#test
+n = 7  # количество функций
+deep = 0.6  # глубина основного пути (0.3–0.9)
+id = 12345  # пример id студента
+
+lab2 = GenerateLab2(n, deep, id)
+lab2.generate_asm()
 
