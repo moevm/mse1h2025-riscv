@@ -38,13 +38,26 @@ def generate_graph(max_depth=5, max_nodes=10):
 
     return G
 
+def init_temp_reg(G, node, k, n):
+    if k == 7:
+        temp_registers = 'a7'
+        k = 0
+    else:
+        temp_registers = f"a{k}"
+        k += 1
+    if "init" in G.nodes[node]:
+        G.nodes[node]["init"] += f"\n    li {temp_registers}, {n}"
+    else:
+        G.nodes[node]["init"] = f"li {temp_registers}, {n}"
+    return G, k, temp_registers
+
 
 def add_operations_and_conditions(G, student_id):
     # добавляет операции и условия для каждой вершины графа
     random.seed(student_id)
-
     operations = ["add", "sub", "xor", "and", "or", "sll", "srl"]
     registers = ["t1", "t2", "t3", "t5", "t6"]
+    k = 0
 
     for node in G.nodes():
         # выбираем операцию
@@ -64,6 +77,7 @@ def add_operations_and_conditions(G, student_id):
 
         if random.random() < 0.5:
             imm = random.randint(1, 15) if "sll" in op or "srl" in op else random.randint(0, 0xFFFF)
+            G, k, temp_reg = init_temp_reg(G, node, k, imm)
         else:
             imm = random.choice(registers)
             flag_use_t = imm
@@ -75,110 +89,21 @@ def add_operations_and_conditions(G, student_id):
 
         # добавляем условие перехода
         if G.out_degree(node) > 1:
-            condition = random.choice(["beqz", "bnez", "blt", "bge", "je", "jne", "ja", "jae", "jb", "jbe"])
-            if condition in ["beqz", "bnez", "blt", "bge"]:
+            condition = random.choice(["beqz", "bnez", "blt", "bge", "beq", "bne", "bltu", "bgeu"])
+            if condition in ["beqz", "bnez"]:
                 G.nodes[node]["condition"] = f"{condition} {target_reg},"
             else:
+                num = random.randint(0, 0xFFFF)
                 if flag_use_t != 0:
-                    G.nodes[node][
-                        "condition"] = f"cmp {target_reg}, {random.choice([flag_use_t, random.randint(0, 0xFFFF)])}\n    {condition}"
+                    choice = random.choice([flag_use_t, num])
+                    if not isinstance(choice, str):
+                        G, k, choice = init_temp_reg(G, node, k, num)
+                    G.nodes[node]["condition"] = f"{condition} {target_reg}, {choice},"
                 else:
-                    G.nodes[node]["condition"] = f"cmp {target_reg}, {random.randint(0, 0xFFFF)}\n    {condition}"
+                    G, k, num = init_temp_reg(G, node, k, num)
+                    G.nodes[node]["condition"] = f"{condition} {target_reg}, {num},"
         else:
             G.nodes[node]["condition"] = "j"  # безусловный переход
-
-def do_operation(registers, target_reg, source_reg, op, operand):
-    # определяем операнд (число или регистр)
-    if operand in registers:
-        imm = registers[operand]
-    else:
-        imm = int(operand, 0)
-
-    # применяем операцию к целевому регистру
-    if op == "add":
-        registers[target_reg] = registers[source_reg] + imm
-    elif op == "sub":
-        registers[target_reg] = registers[source_reg] - imm
-    elif op == "xor":
-        registers[target_reg] = registers[source_reg] ^ imm
-    elif op == "and":
-        registers[target_reg] = registers[source_reg] & imm
-    elif op == "or":
-        registers[target_reg] = registers[source_reg] | imm
-    elif op == "sll":
-        registers[target_reg] = (registers[source_reg] << imm) & 0xFFFFFFFF
-    elif op == "srl":
-        registers[target_reg] = (registers[source_reg] >> imm) & 0xFFFFFFFF
-    return registers
-
-def calculate_t4(G, t1, t2):
-    # эмулирует выполнение графа и вычисляет конечное значение t3 (t4)
-    registers = {'t1': t1, 't2': t2, 't3': 0, 't4': 0, 't5': 0, 't6': 0}
-    current_node = 0
-
-    while True:
-        # получаем операцию в узле
-        op_str = G.nodes[current_node]["op"]
-        op_parts = op_str.split()
-        op = op_parts[0]
-        target_reg = op_parts[1][:-1]
-        source_reg = op_parts[2][:-1]
-        operand = op_parts[-1]
-        if "init" in G.nodes[current_node]:
-            init = G.nodes[current_node]["init"].split()
-            registers[init[1][:-1]] = int(init[2])
-
-        registers = do_operation(registers, target_reg, source_reg, op,operand)
-
-        # получаем список исходящих рёбер
-        successors = list(G.successors(current_node))
-
-        if not successors:
-            break  # если нет исходящих рёбер, завершаем выполнение
-
-        # проверяем условие перехода
-        condition = G.nodes[current_node]["condition"].split()
-        if condition[0] == "j":
-            current_node = successors[0]  # Безусловный переход
-        elif condition[0] == "beqz" and registers[target_reg] == 0:
-            current_node = successors[0]
-        elif condition[0] == "bnez" and registers[target_reg] != 0:
-            current_node = successors[0]
-        elif condition[0] == "blt" and registers[target_reg] < 0:
-            current_node = successors[0]
-        elif condition[0] == "bge" and registers[target_reg] >= 0:
-            current_node = successors[0]
-        elif condition[0] == "cmp":
-            if condition[2] in registers:
-                cond_num = registers[condition[2]]
-            else:
-                cond_num = int(condition[2])
-            if condition[-1] == 'je' and registers[target_reg] == cond_num:
-                current_node = successors[0]
-            elif condition[-1] == 'jne' and registers[target_reg] != cond_num:
-                current_node = successors[0]
-            elif condition[-1] == 'ja' and registers[target_reg] > cond_num:
-                current_node = successors[0]
-            elif condition[-1] == 'jae' and registers[target_reg] >= cond_num:
-                current_node = successors[0]
-            elif condition[-1] == 'jb' and registers[target_reg] < cond_num:
-                current_node = successors[0]
-            elif condition[-1] == 'jbe' and registers[target_reg] <= cond_num:
-                current_node = successors[0]
-        else:
-            current_node = successors[1]  # иначе идём по второму пути
-
-    #добавляем секретное действие (+1 функция) которое нужно будет восстановить студенту
-    operations = ["add", "sub", "xor", "and", "or", "sll", "srl"]
-    op_secret = random.choice(operations[:-1])
-    if random.random() < 0.5:
-        imm_secret = random.randint(1, 15) if "sll" in op or "srl" in op else random.randint(0, 0xFFFF)
-    else:
-        imm_secret = random.choice(list(registers.keys()))
-        if imm_secret in ["t5", "t6"] and registers[imm_secret] == 0:
-            registers[imm_secret] = random.randint(0, 0xFFFF)
-    registers = do_operation(registers, 't3', 't3', op_secret, imm_secret)
-    return registers['t3'], [op_secret, imm_secret]
 
 
 def generate_code_from_graph(G, t1, t2, t4):
@@ -241,7 +166,6 @@ add_operations_and_conditions(G, student_id)
 
 # генерируем RISC-V код
 t1, t2 = generate_random_values(student_id)
-t4, secret = calculate_t4(G, t1, t2)
 asm_code = generate_code_from_graph(G, t1, t2, t4=0)
 
 # сохраняем код в файл
