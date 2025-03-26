@@ -77,7 +77,7 @@ def add_operations_and_conditions(G, student_id):
 
         if random.random() < 0.5:
             imm = random.randint(1, 15) if "sll" in op or "srl" in op else random.randint(0, 0xFFFF)
-            G, k, temp_reg = init_temp_reg(G, node, k, imm)
+            G, k, imm = init_temp_reg(G, node, k, imm)
         else:
             imm = random.choice(registers)
             flag_use_t = imm
