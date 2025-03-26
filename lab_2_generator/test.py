@@ -1,7 +1,5 @@
 import random
 import networkx as nx
-import matplotlib.pyplot as plt
-
 
 class GenerateLab2:
     def __init__(self, n: int, deep: float, id: int):
@@ -47,7 +45,6 @@ class GenerateLab2:
 
         used = set(self.main_path)
         free = [v for v in vertices if v not in used]
-        print(free)
         for u in free:
             v = random.choice(self.main_path[:-1])
             self.G.add_edge(v, u, color='red')
@@ -86,6 +83,15 @@ class GenerateLab2:
 
 
     def generate_func(self, idx, neighbors):
+        """
+        n = 7  # количество функций
+        deep = 0.6  # глубина основного пути (0.3–0.8)
+        id = 12345  # пример id студента
+
+        lab2 = GenerateLab2(n, deep, id)
+
+        print(lab2.generate_asm())
+        """
         lines = [f'func_{idx}:']
         lines += self.generate_noise()
 
@@ -137,24 +143,7 @@ _start:
         with open("generated_program.s", "w") as f:
             f.write(asm_code)
 
+        return self.flag
 
-        #test
-        print(f"Флаг (в a5): {self.flag}")
-        print(f"Начальные значения: a4 = {self.a4}, a5 = {self.a5}, a6 = {self.a6}")
-        print(f"Инструкции распределены по функциям: {list(self.ops_map.keys())}")
-        print("Ассемблер сохранён в: generated_program.s")
 
-        # plt.figure(figsize=(8, 6))
-        # edge_colors = [self.G[u][v]['color'] for u, v in self.G.edges()]
-        # nx.draw(self.G, with_labels=True, node_color="lightblue", edge_color=edge_colors)
-        # plt.title("Граф вызовов функций")
-        # plt.show()
-
-#test
-n = 7  # количество функций
-deep = 0.6  # глубина основного пути (0.3–0.9)
-id = 12345  # пример id студента
-
-lab2 = GenerateLab2(n, deep, id)
-lab2.generate_asm()
 
