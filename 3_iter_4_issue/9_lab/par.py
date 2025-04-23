@@ -52,5 +52,5 @@ answer = {
     "fraction": 1.0 if passed else 0.0,
     "prologuehtml": msg
 }
-print(answer["prologuehtml"])
+print(json.dumps(answer, ensure_ascii=False))
 

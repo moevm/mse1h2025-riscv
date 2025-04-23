@@ -19,7 +19,7 @@ subprocess.run(["pip", "install", "-r", requirements_path], stdout=subprocess.DE
 
 import riscv_course
 
-user_id = 345435  # или: int(sys.argv[2].split("=")[1])
+user_id = int(sys.argv[2].split("=")[1])
 user_id = (((user_id ** 2) << 10) * 43) >> 5
 
 n = 7
