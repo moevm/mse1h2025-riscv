@@ -56,3 +56,13 @@
 Ссылка на протоколы созвонов: https://docs.google.com/document/d/11w5QSSlMMXgVebTxRhlXPlBrvN_s-iV2/edit?usp=sharing&ouid=108666801715152487047&rtpof=true&sd=true
 
 Ссылка на записи созвонов: https://drive.google.com/drive/folders/1fXVWhUukd_j455382Up9cfCcx1YvGImY?usp=sharing
+
+# Fork
+Ссылка на fork: https://github.com/MarieLukyanova/workshop_risc-v/tree/main
+
+Ссылка на различия с основным репозиторием: https://github.com/moevm/workshop_risc-v/compare/main...MarieLukyanova:workshop_risc-v:main
+
+# Ссылки на скринкасты проекта
+Ссылка на работу прототипа генераторов для лабораторных (2 итерация): https://drive.google.com/file/d/1B-3_u5Ah8e9-FSOi8N6Sz55TBdsNAaUd/view?usp=sharing 
+
+Ссылка на работу тестового курса (3 итерация): https://drive.google.com/file/d/1wuu8Js0qNY3Gy-GRDyE6T1pmx_ilrnP2/view?usp=sharing
