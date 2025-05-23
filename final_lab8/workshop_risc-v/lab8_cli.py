@@ -9,7 +9,6 @@ def create_task_lab8(args) -> Lab8Branch:
     task = Lab8Branch(
         n=args.n,
         deep=args.deep,
-        student_id=args.id,
         **get_common_cli_args(args),
     )
     return task
